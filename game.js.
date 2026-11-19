@@ -1,0 +1,148 @@
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+
+const camera = new THREE.PerspectiveCamera(
+    70,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+// Lighting
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+
+const sunlight = new THREE.DirectionalLight(0xffffff, 1.5);
+sunlight.position.set(10, 20, 10);
+scene.add(sunlight);
+
+// Ground
+const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(200, 200),
+    new THREE.MeshStandardMaterial({ color: 0x55aa55 })
+);
+ground.rotation.x = -Math.PI / 2;
+scene.add(ground);
+
+// Road
+const road = new THREE.Mesh(
+    new THREE.BoxGeometry(12, 0.1, 200),
+    new THREE.MeshStandardMaterial({ color: 0x333333 })
+);
+road.position.y = 0.05;
+scene.add(road);
+
+// Buildings
+function createBuilding(x, z, color) {
+    const building = new THREE.Mesh(
+        new THREE.BoxGeometry(10, 12, 10),
+        new THREE.MeshStandardMaterial({ color })
+    );
+    building.position.set(x, 6, z);
+    scene.add(building);
+}
+
+createBuilding(-18, -15, 0xffcc99);
+createBuilding(18, -15, 0xff9999);
+createBuilding(-18, 15, 0xffffff);
+createBuilding(18, 15, 0xffdd66);
+
+// Player
+const player = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.6, 1.2, 4, 8),
+    new THREE.MeshStandardMaterial({ color: 0x3366ff })
+);
+player.position.set(0, 1.2, 0);
+scene.add(player);
+
+// Coca-Cola collection
+let score = 0;
+const cans = [];
+
+function createCan(x, z) {
+    const can = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.3, 0.3, 0.8, 16),
+        new THREE.MeshStandardMaterial({ color: 0xe60000 })
+    );
+
+    can.position.set(x, 0.5, z);
+    scene.add(can);
+    cans.push(can);
+}
+
+createCan(-5, -5);
+createCan(5, 5);
+createCan(-7, 12);
+createCan(7, -12);
+createCan(0, -20);
+
+// Score display
+const scoreDisplay = document.createElement('div');
+scoreDisplay.style.cssText = `
+    position: absolute;
+    top: 90px;
+    left: 15px;
+    color: white;
+    background: rgba(0,0,0,0.7);
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 18px;
+`;
+scoreDisplay.innerText = 'Coca-Cola: 0';
+document.body.appendChild(scoreDisplay);
+
+// Keyboard controls
+const keys = {};
+
+window.addEventListener('keydown', e => {
+    keys[e.key.toLowerCase()] = true;
+});
+
+window.addEventListener('keyup', e => {
+    keys[e.key.toLowerCase()] = false;
+});
+
+// Game loop
+function animate() {
+    requestAnimationFrame(animate);
+
+    if (keys['w']) player.position.z -= 0.15;
+    if (keys['s']) player.position.z += 0.15;
+    if (keys['a']) player.position.x -= 0.15;
+    if (keys['d']) player.position.x += 0.15;
+
+    camera.position.set(
+        player.position.x,
+        7,
+        player.position.z + 12
+    );
+
+    camera.lookAt(player.position);
+
+    // Collect cans
+    for (let i = cans.length - 1; i >= 0; i--) {
+        if (player.position.distanceTo(cans[i].position) < 1.5) {
+            scene.remove(cans[i]);
+            cans.splice(i, 1);
+            score += 10;
+            scoreDisplay.innerText = 'Coca-Cola: ' + score;
+        }
+    }
+
+    renderer.render(scene, camera);
+}
+
+animate();
+
+// Screen resizing
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
